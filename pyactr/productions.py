@@ -766,8 +766,21 @@ class ProductionRules(object):
                 updated.state = updated._FREE
                 yield Event(roundtime(time), name, "VISUAL STOPPED FROM AUTOMATIC BUFFERING AT ITS CURRENT FOCUS")
         elif isinstance(updated, motor.Motor):
-            ret = yield from self.motorset(name, updated, otherchunk, temp_actrvariables, time)
-            yield ret #motor action returns value, namely, its continuation method
+            ####ROS extension
+            mod_attr_val = {x[0]: utilities.check_bound_vars(temp_actrvariables, x[1]) for x in otherchunk.removeunused()}
+            if (not mod_attr_val['cmd'].values) or mod_attr_val['cmd'].values not in utilities.CMDMANUAL:
+                raise ACTRError("Motor module received no command or an invalid command: '%s'. The valid commands are: '%s'" % (mod_attr_val['cmd'].values, utilities.CMDVISUAL))
+            if mod_attr_val['cmd'].values == utilities.CMDPRESSKEY:
+                ret = yield from self.motorset(name, updated, otherchunk, temp_actrvariables, time)
+                yield ret #motor action returns value, namely, its continuation method
+            elif mod_attr_val['cmd'].values[:3] == 'ROS':
+                #Commented as part of ROS Extension
+                #elif isinstance(updated, motor.Motor):
+                #ret = yield from self.motorset(name, updated, otherchunk, temp_actrvariables, time)
+                #yield ret #motor action returns value, namely, its continuation method
+                ret = yield from self.motor_ros_interface(name, updated, otherchunk, temp_actrvariables, time)
+                yield ret #motor action returns value, namely, its continuation method
+                
         else:
             yield from self.retrieve(name, updated, otherchunk, temp_actrvariables, time)
 
@@ -967,7 +980,26 @@ class ProductionRules(object):
         motorbuffer.state = motorbuffer._FREE
         motorbuffer.execution = motorbuffer._FREE
         motorbuffer.last_key[1] = 0
+    def motor_ros_interface(self, name, motorbuffer, otherchunk, temp_actrvariables, time):
+        """
+        Carry out preparation of motor action. 
+        """
+        #newchunk = motorbuffer.create(otherchunk, temp_actrvariables)
+        motorbuffer.state = motorbuffer._BUSY
+        motorbuffer.preparation = motorbuffer._BUSY
+        motorbuffer.processor = motorbuffer._BUSY
+        yield Event(roundtime(time), name, 'COMMAND: %s' % str(otherchunk.cmd))
+        time+= 0.05
+        yield Event(roundtime(time), name, 'ROS REQUEST SENT')
+        motorbuffer.send_ros_request(otherchunk,temp_cmd= temp_actrvariables)
+        time+=0.15
+        yield Event(roundtime(time), name, 'RESPONSE FROM ROS RECIEVED')
+        motorbuffer.state = motorbuffer._FREE
+        motorbuffer.execution = motorbuffer._FREE
+        motorbuffer.processor = motorbuffer._FREE
+        motorbuffer.last_key[0] = otherchunk.key
 
+        
     def LHStest(self, dictionary, actrvariables, update=False):
         """
         Test rules in LHS of production rules. update specifies whether actrvariables should be updated (this does not happen when rules are tested, only when they are fired)

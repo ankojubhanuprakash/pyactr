@@ -6,7 +6,8 @@ import pyactr.chunks as chunks
 import pyactr.utilities as utilities
 from pyactr.utilities import ACTRError
 import pyactr.buffers as buffers
-
+import socket   
+import threading
 class Motor(buffers.Buffer):
     """
     Motor buffer. Only pressing keys possible.
@@ -26,6 +27,13 @@ class Motor(buffers.Buffer):
         self.preparation = self._FREE
         self.processor = self._FREE
         self.execution = self._FREE
+        ###ROS TCP begin
+        host = "127.0.0.1"  # Receiver's IP address
+        port = 12345   
+        self.sender_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sender_socket.connect((host, port))
+
+        ###ros tcp end
 
         self.last_key = [None, 0] #the number says what the last key was and when the last press will be finished, so that the preparation of the next move can speed up if it is a similar key, and execution waits for the previous mvt (two mvts cannot be carried out at the same time, according to ACT-R motor module)
 
@@ -65,4 +73,32 @@ class Motor(buffers.Buffer):
             raise ACTRError("Motor module received an invalid key: %s" % pressed_key)
 
         return new_chunk
+    
+    def send_ros_request(self, otherchunk, temp_cmd=None,actrvariables=None,):
+        """
+        Grasp command either move or stop or left ot right
+        and send instruction ros controller via tcp
+        """
+        message = str(otherchunk.cmd)
+        print(message)
+        self.sender_socket.send(message.encode())
+        #print('hi')
+        #host = "127.0.0.1"  # Receiver's IP address
+        #port = 12345
+        #tcp_thread = threading.Thread(target=send_tcp_message,args=[host,port,str(otherchunk.cmd)])
+        #tcp_thread.start()
+
+        # Wait for the thread to complete
+        #tcp_thread.join()
+        return
+def send_tcp_message(host, port, message):
+
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((host, port))
+        client_socket.send(message.encode())
+        client_socket.close()
+    except Exception as e:
+        print(f"Error sending message: {e}")
+        client_socket.close()
 

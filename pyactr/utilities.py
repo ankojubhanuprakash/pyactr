@@ -69,8 +69,18 @@ SPECIALCHUNKTYPES = {MANUAL: "cmd, key", VISUAL: "cmd, value, color, screen_pos"
 
 #special values for cmd in MANUAL
 
-CMDMANUAL = set([EMPTYVALUE, str(EMPTYVALUE), "press_key"])
+######ROS extension
+##CMDMANUAL = set([EMPTYVALUE, str(EMPTYVALUE), "press_key"]) adding ros inputs 
+CMDMANUAL = set([EMPTYVALUE, str(EMPTYVALUE), "press_key","ROS_move","ROS_stop","ROS_load","ROS_release","ROS_left","ROS_right"])
 CMDPRESSKEY = "press_key"
+CMDROSMOV   = "ROS_move"
+CMDROSSTP   = "ROS_stop"
+CMDROSLOAD   = "ROS_load"
+CMDROSRLS   = "ROS_release"
+CMDROSLFT   = "ROS_left"
+CMDROSRGHT   = "ROS_right"
+
+
 
 #special values for cmd in VISUAL
 
